@@ -84,23 +84,62 @@ class _ProfilePageState extends State<ProfilePage> {
           BlocBuilder<NotificationCubit, NotificationState>(
             builder: (context, notifState) {
               final unread = notifState.unreadCount;
-              return Badge(
-                isLabelVisible: unread > 0,
-                label: Text(
-                  '$unread',
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-                backgroundColor: AppColors.accent,
-                child: IconButton(
-                  icon: const Icon(CupertinoIcons.bell, size: 21),
-                  tooltip: 'Notifications',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const NotificationCenterPage(),
+              return IconButton(
+                tooltip: 'Notifications',
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationCenterPage(),
+                    ),
+                  );
+                },
+                icon: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(CupertinoIcons.bell, size: 21),
+                    if (unread > 0)
+                      Positioned(
+                        top: -3,
+                        right: -5,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1.5,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE53935),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                              width: 1.5,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x33E53935),
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              unread > 99 ? '99+' : '$unread',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                height: 1.0,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
                       ),
-                    );
-                  },
+                  ],
                 ),
               );
             },

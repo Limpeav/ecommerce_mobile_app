@@ -21,7 +21,7 @@ class PendingReviewsPage extends StatefulWidget {
 class _PendingReviewsPageState extends State<PendingReviewsPage> {
   final Map<String, int> _ratings = {};
   final Map<String, TextEditingController> _commentControllers = {};
-  final Set<String> _submitting = {};
+  bool _isSubmittingAll = false;
 
   @override
   void initState() {
@@ -46,62 +46,88 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
     );
   }
 
-  Future<void> _submitReview(PendingReviewItem item) async {
-    final rating = _ratings[item.key] ?? 0;
-    if (rating == 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
+  int _ratingFor(PendingReviewItem item) {
+    // 5 filled stars by default as requested
+    return _ratings[item.key] ?? 5;
+  }
+
+  Future<void> _submitAllReviews(List<PendingReviewItem> items) async {
+    if (items.isEmpty || _isSubmittingAll) return;
+
+    setState(() {
+      _isSubmittingAll = true;
+    });
+
+    final productBloc = context.read<ProductBloc>();
+    final orderBloc = context.read<OrderBloc>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      final user = context.read<AuthBloc>().state.currentUser;
+      final userName =
+          user?.name.isNotEmpty == true ? user!.name : 'Verified Buyer';
+      final today = _formatToday();
+
+      for (final item in items) {
+        final rating = _ratingFor(item);
+        final comment = _commentControllerFor(item).text.trim();
+        final review = ProductReviewEntity(
+          userName: userName,
+          userAvatar: '',
+          rating: rating.toDouble(),
+          comment: comment.isNotEmpty ? comment : 'Rated 5/5 after delivery.',
+          date: today,
+        );
+
+        // 1. Add review in ProductBloc
+        productBloc.add(ProductAddReviewRequested(
+              productId: item.productId,
+              review: review,
+            ));
+
+        // 2. Submit to backend
+        try {
+          await ProductReviewService.submitReview(
+            productId: item.productId,
+            rating: rating.toDouble(),
+            comment: review.comment,
+            authToken: user?.token,
+          );
+        } catch (e) {
+          debugPrint('⚠️ Error submitting review to backend: $e');
+        }
+
+        // 3. Mark as rated
+        await ReviewRequirementService.markRated(
+          orderId: item.orderId,
+          productId: item.productId,
+        );
+      }
+
+      if (!mounted) return;
+
+      // Clear local controllers and ratings
+      for (final controller in _commentControllers.values) {
+        controller.dispose();
+      }
+      _commentControllers.clear();
+      _ratings.clear();
+
+      orderBloc.add(const OrderPendingReviewsRefreshed());
+
+      messenger.showSnackBar(
         const SnackBar(
-          content: Text('Please choose a star rating before submitting.'),
+          content: Text('Thank you! Your ratings have been submitted.'),
           behavior: SnackBarBehavior.floating,
         ),
       );
-      return;
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmittingAll = false;
+        });
+      }
     }
-
-    setState(() {
-      _submitting.add(item.key);
-    });
-
-    final comment = _commentControllerFor(item).text.trim();
-    final user = context.read<AuthBloc>().state.currentUser;
-    final review = ProductReviewEntity(
-      userName: user?.name.isNotEmpty == true ? user!.name : 'Verified Buyer',
-      userAvatar: '',
-      rating: rating.toDouble(),
-      comment: comment.isNotEmpty ? comment : 'Rated after delivery.',
-      date: _formatToday(),
-    );
-
-    context.read<ProductBloc>().add(ProductAddReviewRequested(
-          productId: item.productId,
-          review: review,
-        ));
-
-    await ProductReviewService.submitReview(
-      productId: item.productId,
-      rating: rating.toDouble(),
-      comment: review.comment,
-      authToken: user?.token,
-    );
-
-    await ReviewRequirementService.markRated(
-      orderId: item.orderId,
-      productId: item.productId,
-    );
-
-    if (!mounted) return;
-
-    _commentControllers.remove(item.key)?.dispose();
-    _ratings.remove(item.key);
-    _submitting.remove(item.key);
-    context.read<OrderBloc>().add(const OrderPendingReviewsRefreshed());
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Thank you. Your review was submitted.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 
   @override
@@ -155,6 +181,20 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
                             : AppColors.textSecondaryLight,
                       ),
                     ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.accent,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 24, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text('Back to Orders'),
+                    ),
                   ],
                 ),
               ),
@@ -162,7 +202,7 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
           }
 
           return ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             itemCount: pending.length,
             separatorBuilder: (context, index) => const SizedBox(height: 14),
             itemBuilder: (context, index) {
@@ -172,12 +212,76 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
           );
         },
       ),
+      bottomNavigationBar: BlocBuilder<OrderBloc, OrderState>(
+        builder: (context, orderState) {
+          final pending = orderState.pendingReviewItems;
+          if (pending.isEmpty) return const SizedBox.shrink();
+
+          return SafeArea(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                border: Border(
+                  top: BorderSide(
+                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                  ),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withAlpha(isDark ? 30 : 8),
+                    blurRadius: 8,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton.icon(
+                  onPressed: _isSubmittingAll
+                      ? null
+                      : () => _submitAllReviews(pending),
+                  icon: _isSubmittingAll
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Icon(Icons.rate_review_outlined, size: 20),
+                  label: Text(
+                    _isSubmittingAll
+                        ? 'Submitting Ratings...'
+                        : (pending.length > 1
+                            ? 'Submit All Ratings (${pending.length})'
+                            : 'Submit Rating'),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.accent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 
   Widget _buildReviewCard(PendingReviewItem item, bool isDark) {
-    final rating = _ratings[item.key] ?? 0;
-    final isSubmitting = _submitting.contains(item.key);
+    final rating = _ratingFor(item);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -199,7 +303,9 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
                 child: Container(
                   width: 64,
                   height: 64,
-                  color: isDark ? AppColors.surfaceSoftDark : const Color(0xFFF1F5F9),
+                  color: isDark
+                      ? AppColors.surfaceSoftDark
+                      : const Color(0xFFF1F5F9),
                   child: item.productImage.isNotEmpty
                       ? Image.network(
                           item.productImage,
@@ -246,7 +352,8 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
               return IconButton(
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+                constraints:
+                    const BoxConstraints.tightFor(width: 42, height: 42),
                 icon: Icon(
                   star <= rating
                       ? Icons.star_rounded
@@ -254,7 +361,7 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
                   color: AppColors.warmAmber,
                   size: 34,
                 ),
-                onPressed: isSubmitting
+                onPressed: _isSubmittingAll
                     ? null
                     : () {
                         setState(() {
@@ -267,31 +374,11 @@ class _PendingReviewsPageState extends State<PendingReviewsPage> {
           const SizedBox(height: 10),
           TextField(
             controller: _commentControllerFor(item),
-            enabled: !isSubmitting,
+            enabled: !_isSubmittingAll,
             minLines: 2,
             maxLines: 4,
             decoration: const InputDecoration(
               hintText: 'Share your experience with this product',
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            height: 46,
-            child: ElevatedButton.icon(
-              onPressed: isSubmitting ? null : () => _submitReview(item),
-              icon: isSubmitting
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.rate_review_outlined, size: 18),
-              label: Text(isSubmitting ? 'Submitting...' : 'Submit Rating'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.accent,
-                foregroundColor: Colors.white,
-              ),
             ),
           ),
         ],

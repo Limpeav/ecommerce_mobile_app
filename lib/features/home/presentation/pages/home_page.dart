@@ -6,18 +6,14 @@ import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../../../../features/auth/presentation/bloc/auth_state.dart';
 import '../../../../features/cart/presentation/bloc/cart_bloc.dart';
 import '../../../../features/cart/presentation/bloc/cart_event.dart';
-import '../../../../features/cart/presentation/bloc/cart_state.dart';
 import '../../../../features/notifications/presentation/bloc/notification_cubit.dart';
 import '../../../../features/notifications/presentation/bloc/notification_state.dart';
 import '../../../../features/products/presentation/bloc/product_bloc.dart';
 import '../../../../features/products/presentation/bloc/product_event.dart';
 import '../../../../features/products/presentation/bloc/product_state.dart';
 import '../../../../core/theme/bloc/theme_cubit.dart';
-import '../../../../features/wishlist/presentation/bloc/wishlist_bloc.dart';
-import '../../../../features/wishlist/presentation/bloc/wishlist_state.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/models/product.dart';
-import '../../../../core/utils/cart_fly_animation.dart';
 import '../../../catalog/presentation/widgets/product_card.dart';
 import '../../../notifications/presentation/pages/notification_center_page.dart';
 import '../widgets/category_pill.dart';
@@ -33,33 +29,13 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+class _HomePageState extends State<HomePage> {
   int _secondsRemaining = 4 * 3600 + 28 * 60 + 15;
   Timer? _timer;
-  final GlobalKey _cartKey = GlobalKey();
-  late AnimationController _cartBounceController;
-  late Animation<double> _cartBounceScale;
 
   @override
   void initState() {
     super.initState();
-    _cartBounceController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 350),
-    );
-    _cartBounceScale = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: 1.35)
-            .chain(CurveTween(curve: Curves.easeOutBack)),
-        weight: 45,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: 1.35, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 55,
-      ),
-    ]).animate(_cartBounceController);
-
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_secondsRemaining > 0 && mounted) {
         setState(() {
@@ -72,21 +48,18 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   @override
   void dispose() {
     _timer?.cancel();
-    _cartBounceController.dispose();
     super.dispose();
   }
 
   void _runAddToCartAnimation(GlobalKey sourceKey, Product product) {
-    CartFlyAnimation.run(
-      context: context,
-      sourceKey: sourceKey,
-      targetKey: _cartKey,
-      imageUrl: product.image,
-      onComplete: () {
-        if (!mounted) return;
-        context.read<CartBloc>().add(CartItemAdded(product: product));
-        _cartBounceController.forward(from: 0.0);
-      },
+    if (!mounted) return;
+    context.read<CartBloc>().add(CartItemAdded(product: product));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Added ${product.title} to cart'),
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(milliseconds: 1500),
+      ),
     );
   }
 
@@ -191,60 +164,32 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                       authState.status == AuthStatus.authenticated;
                                   final userName = authState.currentUser?.name.split(' ').first ?? '';
 
-                                  return Row(
+                                  return Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Container(
-                                        width: 36,
-                                        height: 36,
-                                        margin: const EdgeInsets.only(right: 8),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          shape: BoxShape.circle,
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withAlpha(isDark ? 30 : 10),
-                                              blurRadius: 6,
-                                              offset: const Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
-                                        child: ClipOval(
-                                          child: Image.asset(
-                                            'Assets/splash_screen/app_icon.png',
-                                            fit: BoxFit.cover,
-                                          ),
+                                      Text(
+                                        isAuth && userName.isNotEmpty
+                                            ? 'Hello, $userName 👋'
+                                            : 'Welcome to Cherish 👋',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark
+                                              ? AppColors.textSecondaryDark
+                                              : AppColors.textSecondaryLight,
                                         ),
                                       ),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              isAuth && userName.isNotEmpty
-                                                  ? 'Hello, $userName 👋'
-                                                  : 'Welcome to Cherish 👋',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w600,
-                                                color: isDark
-                                                    ? AppColors.textSecondaryDark
-                                                    : AppColors.textSecondaryLight,
-                                              ),
-                                            ),
-                                            const Text(
-                                              'Cherish Baby Store',
-                                              maxLines: 1,
-                                              overflow: TextOverflow.ellipsis,
-                                              style: TextStyle(
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w900,
-                                                letterSpacing: -0.4,
-                                              ),
-                                            ),
-                                          ],
+                                      const Text(
+                                        'Cherish Baby Store',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w900,
+                                          letterSpacing: -0.4,
                                         ),
                                       ),
                                     ],
@@ -254,7 +199,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             ),
                             const SizedBox(width: 8),
 
-                            // Actions: Theme toggle, Wishlist badge & Cart badge
+                            // Actions: Theme toggle & Notifications
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
@@ -265,7 +210,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                     isDark
                                         ? CupertinoIcons.sun_max_fill
                                         : CupertinoIcons.moon_fill,
-                                    size: 20,
+                                    size: 25,
                                     color: isDark ? AppColors.warmAmber : null,
                                   ),
                                   onPressed: () {
@@ -276,102 +221,63 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 BlocBuilder<NotificationCubit, NotificationState>(
                                   builder: (context, notifState) {
                                     final unread = notifState.unreadCount;
-                                    return Badge(
-                                      isLabelVisible: unread > 0,
-                                      label: Text(
-                                        '$unread',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      backgroundColor: AppColors.accent,
-                                      child: IconButton(
-                                        padding: const EdgeInsets.all(8),
-                                        constraints: const BoxConstraints(),
-                                        icon: const Icon(
-                                          CupertinoIcons.bell,
-                                          size: 21,
-                                        ),
-                                        tooltip: 'Notifications',
-                                        onPressed: () {
-                                          Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                              builder: (_) => const NotificationCenterPage(),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 4),
-                                BlocBuilder<WishlistBloc, WishlistState>(
-                                  builder: (context, wishlistState) {
-                                    final wishCount = wishlistState.count;
-                                    return Badge(
-                                      isLabelVisible: wishCount > 0,
-                                      label: Text(
-                                        '$wishCount',
-                                        style: const TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      backgroundColor: AppColors.discountRed,
-                                      child: IconButton(
-                                        padding: const EdgeInsets.all(8),
-                                        constraints: const BoxConstraints(),
-                                        icon: const Icon(
-                                          CupertinoIcons.heart,
-                                          size: 21,
-                                        ),
-                                        onPressed: () => widget.onTabChange(3),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 4),
-                                BlocBuilder<CartBloc, CartState>(
-                                  builder: (context, cartState) {
-                                    final count = cartState.itemCount;
-                                    return ScaleTransition(
-                                      scale: _cartBounceScale,
-                                      child: Stack(
-                                        key: _cartKey,
+                                    return IconButton(
+                                      padding: const EdgeInsets.all(8),
+                                      constraints: const BoxConstraints(),
+                                      tooltip: 'Notifications',
+                                      onPressed: () {
+                                        Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const NotificationCenterPage(),
+                                          ),
+                                        );
+                                      },
+                                      icon: Stack(
                                         clipBehavior: Clip.none,
                                         children: [
-                                          IconButton(
-                                            padding: const EdgeInsets.all(8),
-                                            constraints: const BoxConstraints(),
-                                            icon: const Icon(
-                                              CupertinoIcons.bag,
-                                              size: 21,
-                                            ),
-                                            onPressed: () => widget.onTabChange(2),
+                                          const Icon(
+                                            CupertinoIcons.bell,
+                                            size: 25,
                                           ),
-                                          if (count > 0)
+                                          if (unread > 0)
                                             Positioned(
-                                              right: -2,
-                                              top: -2,
+                                              top: -4,
+                                              right: -6,
                                               child: Container(
-                                                padding: const EdgeInsets.all(4),
-                                                decoration: const BoxDecoration(
-                                                  color: AppColors.accent,
-                                                  shape: BoxShape.circle,
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 4.5,
+                                                  vertical: 1.5,
                                                 ),
                                                 constraints: const BoxConstraints(
-                                                  minWidth: 16,
-                                                  minHeight: 16,
+                                                  minWidth: 17,
+                                                  minHeight: 17,
                                                 ),
-                                                child: Text(
-                                                  '$count',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 9,
-                                                    fontWeight: FontWeight.bold,
+                                                decoration: BoxDecoration(
+                                                  color: const Color(0xFFE53935),
+                                                  borderRadius: BorderRadius.circular(10),
+                                                  border: Border.all(
+                                                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                                    width: 1.5,
                                                   ),
-                                                  textAlign: TextAlign.center,
+                                                  boxShadow: const [
+                                                    BoxShadow(
+                                                      color: Color(0x33E53935),
+                                                      blurRadius: 3,
+                                                      offset: Offset(0, 1),
+                                                    ),
+                                                  ],
+                                                ),
+                                                child: Center(
+                                                  child: Text(
+                                                    unread > 99 ? '99+' : '$unread',
+                                                    style: const TextStyle(
+                                                      color: Colors.white,
+                                                      fontSize: 9.5,
+                                                      fontWeight: FontWeight.w900,
+                                                      height: 1.0,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
                                                 ),
                                               ),
                                             ),
@@ -613,7 +519,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                                 final product = productState.flashDeals[index];
                                 return FlashSaleCard(
                                   product: product,
-                                  cartTargetKey: _cartKey,
                                   onAddToCartAnimate: _runAddToCartAnimation,
                                 );
                               },
@@ -665,7 +570,6 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                             return ProductCard(
                               product: product,
                               heroTagPrefix: 'home_featured',
-                              cartTargetKey: _cartKey,
                               onAddToCartAnimate: _runAddToCartAnimation,
                             );
                           },

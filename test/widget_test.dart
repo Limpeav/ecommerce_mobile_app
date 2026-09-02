@@ -339,6 +339,70 @@ void main() {
       expect(find.text('Required Ratings'), findsOneWidget);
     });
 
+    testWidgets('PendingReviewsPage renders 5 filled stars by default and only one bottom submit button',
+        (WidgetTester tester) async {
+      // Simulate delivered order with review requirement
+      final dummyProduct = Product(
+        id: 'prod-item-1',
+        title: 'Baby Cotton Romper',
+        price: 15.0,
+        image: 'https://example.com/romper.jpg',
+        images: ['https://example.com/romper.jpg'],
+        category: 'clothing',
+        description: 'Cotton romper',
+        rating: 4.8,
+        ratingCount: 10,
+        availableColors: ['White'],
+        availableSizes: ['0-3M'],
+        reviews: [],
+      );
+
+      final dummyOrder = OrderModel(
+        id: '#ORD-111222',
+        date: DateTime.now(),
+        items: [CartItem(product: dummyProduct, quantity: 1)],
+        subtotal: 15.0,
+        discount: 0.0,
+        shipping: 0.0,
+        tax: 0.0,
+        total: 15.0,
+        deliveryAddress: 'Phnom Penh',
+        paymentMethod: 'Cash on Delivery',
+        status: OrderStatus.delivered,
+        trackingNumber: 'TRK-111-222',
+        estimatedDelivery: 'Sep 3, 2026',
+        isDelivered: true,
+        deliveredAt: DateTime.now(),
+      );
+
+      await tester.runAsync(() async {
+        await ReviewRequirementService.registerDeliveredOrders([dummyOrder]);
+        ServiceLocator.instance.orderBloc.add(const OrderPendingReviewsRefreshed());
+        await Future.delayed(const Duration(milliseconds: 100));
+      });
+
+      await tester.pumpWidget(
+        _buildTestApp(
+          child: const PendingReviewsPage(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pumpAndSettle();
+
+      // Verify all 5 stars are filled (Icons.star_rounded) by default
+      expect(find.byIcon(Icons.star_rounded), findsNWidgets(5));
+      expect(find.byIcon(Icons.star_outline_rounded), findsNothing);
+
+      // Verify exactly ONE submit button exists on the screen
+      expect(find.widgetWithText(ElevatedButton, 'Submit Rating'), findsOneWidget);
+
+      // Clean up
+      await tester.runAsync(() async {
+        await ReviewRequirementService.markRated(orderId: '#ORD-111222', productId: 'prod-item-1');
+      });
+    });
+
     test('ReviewRequirementService registers delivered orders and enforces rating requirement', () async {
       SharedPreferences.setMockInitialValues({});
       const dummyProduct = Product(
