@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"name": "flutter_application_1",
+			"path": "."
+		},
+		{
+			"name": "routes",
+			"path": "../../../Desktop/ecommerce-website/backend/routes"
+		}
+	],
+	"settings": {}
+}

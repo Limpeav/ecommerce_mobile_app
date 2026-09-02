@@ -1,0 +1,8 @@
+# Android Keystore release configuration
+# Copy this file to android/key.properties and replace with your real keystore values
+# Ensure android/key.properties is ignored by git (.gitignore)
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=/Users/macbookair/upload-keystore.jks
