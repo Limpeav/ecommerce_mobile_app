@@ -30,6 +30,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthResetPasswordRequested>(_onAuthResetPasswordRequested);
     on<AuthUpdatePhoneRequested>(_onAuthUpdatePhoneRequested);
     on<AuthUpdateProfileRequested>(_onAuthUpdateProfileRequested);
+    on<AuthChangePasswordRequested>(_onAuthChangePasswordRequested);
     on<AuthLogoutRequested>(_onAuthLogoutRequested);
     on<AuthClearMessages>(_onAuthClearMessages);
 
@@ -471,6 +472,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       user: updatedUser,
       successMessage: 'Profile updated successfully!',
     ));
+  }
+
+  Future<void> _onAuthChangePasswordRequested(
+    AuthChangePasswordRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(state.copyWith(
+      status: AuthStatus.loading,
+      clearMessages: true,
+    ));
+
+    try {
+      await authRepository.changePassword(
+        currentPassword: event.currentPassword,
+        newPassword: event.newPassword,
+      );
+      emit(state.copyWith(
+        status: AuthStatus.authenticated,
+        successMessage: 'Password updated successfully!',
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: AuthStatus.failure,
+        errorMessage: _cleanErrorMessage(e),
+      ));
+    }
   }
 
   Future<void> _onAuthLogoutRequested(

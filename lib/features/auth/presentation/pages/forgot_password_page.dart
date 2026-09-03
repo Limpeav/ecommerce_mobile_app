@@ -7,7 +7,9 @@ import '../../../../core/constants/app_colors.dart';
 import 'reset_password_page.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
-  const ForgotPasswordPage({super.key});
+  final String? initialEmail;
+
+  const ForgotPasswordPage({super.key, this.initialEmail});
 
   @override
   State<ForgotPasswordPage> createState() => _ForgotPasswordPageState();
@@ -15,7 +17,13 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  late final TextEditingController _emailController;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail ?? '');
+  }
 
   @override
   void dispose() {

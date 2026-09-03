@@ -29,6 +29,10 @@ abstract class AuthRepository {
     String? phone,
     String? avatarUrl,
   });
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  });
   Future<void> saveUser(UserEntity user);
   Future<void> logout();
   UserEntity? getCachedUser();

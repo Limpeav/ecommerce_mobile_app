@@ -31,6 +31,11 @@ abstract class AuthRemoteDataSource {
     String? phone,
     String? avatarUrl,
   });
+  Future<UserModel> changePassword({
+    required String token,
+    required String currentPassword,
+    required String newPassword,
+  });
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -213,5 +218,29 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return UserModel.fromJson(response);
     }
     throw Exception('Invalid server response from update profile');
+  }
+
+  @override
+  Future<UserModel> changePassword({
+    required String token,
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final response = await apiClient.put(
+      AuthConstants.updateProfile,
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+      body: {
+        'password': newPassword,
+        'currentPassword': currentPassword,
+        'oldPassword': currentPassword,
+      },
+    );
+
+    if (response is Map<String, dynamic>) {
+      return UserModel.fromJson(response);
+    }
+    throw Exception('Invalid server response from change password');
   }
 }

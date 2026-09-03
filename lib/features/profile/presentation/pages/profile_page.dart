@@ -15,8 +15,6 @@ import '../../../../features/orders/presentation/bloc/order_bloc.dart';
 import '../../../../features/orders/presentation/bloc/order_event.dart';
 import '../../../../features/orders/presentation/bloc/order_state.dart';
 import '../../../../core/theme/bloc/theme_cubit.dart';
-import '../../../../core/theme/bloc/locale_cubit.dart';
-import '../../../../l10n/app_localizations.dart';
 import '../../../../features/wishlist/presentation/bloc/wishlist_bloc.dart';
 import '../../../../features/wishlist/presentation/bloc/wishlist_state.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -24,6 +22,7 @@ import '../../../../core/models/order.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/pages/login_page.dart';
 import '../../../auth/presentation/pages/register_page.dart';
+import 'settings_page.dart';
 import '../../../notifications/presentation/pages/notification_center_page.dart';
 import '../../../orders/presentation/pages/orders_page.dart';
 import '../../../orders/presentation/pages/pending_reviews_page.dart';
@@ -40,8 +39,6 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  bool _notificationsEnabled = true;
-
   @override
   void initState() {
     super.initState();
@@ -152,6 +149,13 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             tooltip: isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode',
             onPressed: () => context.read<ThemeCubit>().toggleTheme(),
+          ),
+          IconButton(
+            icon: const Icon(CupertinoIcons.gear_alt, size: 22),
+            tooltip: 'Settings',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const SettingsPage()),
+            ),
           ),
           IconButton(
             icon: const Icon(CupertinoIcons.headphones, size: 22),
@@ -293,164 +297,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     ],
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // 6. Preferences & Settings Group
-                  _buildSectionHeader('Preferences & Security', textColor),
-                  const SizedBox(height: 8),
-                  _buildCardGroup(
-                    isDark: isDark,
-                    cardColor: cardColor,
-                    borderColor: borderColor,
-                    children: [
-                      // Dark Mode Switch
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        leading: _buildTileIcon(
-                          CupertinoIcons.moon_fill,
-                          AppColors.primary,
-                          AppColors.primary.withValues(alpha: 0.12),
-                        ),
-                        title: Text(
-                          'Dark Appearance',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: textColor),
-                        ),
-                        subtitle: Text(
-                          isDark ? 'Dark theme enabled' : 'Light cream theme enabled',
-                          style: TextStyle(fontSize: 12, color: subtextColor),
-                        ),
-                        trailing: Switch.adaptive(
-                          value: isDark,
-                          activeTrackColor: AppColors.primary,
-                          activeThumbColor: Colors.white,
-                          onChanged: (_) => context.read<ThemeCubit>().toggleTheme(),
-                        ),
-                      ),
-                      _buildDivider(borderColor),
-                      // Notifications Switch
-                      ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        leading: _buildTileIcon(
-                          CupertinoIcons.bell_fill,
-                          const Color(0xFF0284C7),
-                          const Color(0xFFF0F9FF),
-                        ),
-                        title: Text(
-                          'Order & Deal Notifications',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: textColor),
-                        ),
-                        subtitle: Text(
-                          _notificationsEnabled ? 'Instant updates enabled' : 'Muted',
-                          style: TextStyle(fontSize: 12, color: subtextColor),
-                        ),
-                        trailing: Switch.adaptive(
-                          value: _notificationsEnabled,
-                          activeTrackColor: AppColors.primary,
-                          activeThumbColor: Colors.white,
-                          onChanged: (val) {
-                            setState(() => _notificationsEnabled = val);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(_notificationsEnabled ? 'Notifications enabled' : 'Notifications disabled'),
-                                duration: const Duration(seconds: 1),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      _buildDivider(borderColor),
-                      _buildMenuTile(
-                        icon: CupertinoIcons.globe,
-                        iconColor: const Color(0xFF8B5CF6),
-                        iconBg: const Color(0xFFF5F3FF),
-                        title: 'Language & Currency',
-                        subtitle: 'English (US) • USD (\$) & KHR (៛)',
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        onTap: () => _showLanguageModal(context, isDark),
-                      ),
-                      if (isAuthenticated && user != null) ...[
-                        _buildDivider(borderColor),
-                        _buildMenuTile(
-                          icon: CupertinoIcons.person_crop_circle,
-                          iconColor: const Color(0xFF0D9488),
-                          iconBg: const Color(0xFFF0FDFA),
-                          title: 'Personal Information',
-                          subtitle: 'Update your name, contact phone & avatar',
-                          isDark: isDark,
-                          textColor: textColor,
-                          subtextColor: subtextColor,
-                          onTap: () => _showEditProfileDialog(context, user),
-                        ),
-                      ],
-                    ],
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // 7. Customer Care & Legal
-                  _buildSectionHeader('Support & Information', textColor),
-                  const SizedBox(height: 8),
-                  _buildCardGroup(
-                    isDark: isDark,
-                    cardColor: cardColor,
-                    borderColor: borderColor,
-                    children: [
-                      _buildMenuTile(
-                        icon: CupertinoIcons.chat_bubble_2_fill,
-                        iconColor: AppColors.primary,
-                        iconBg: AppColors.primary.withValues(alpha: 0.12),
-                        title: '24/7 Customer Care & Live Chat',
-                        subtitle: 'Direct phone, email & telegram assistance',
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        onTap: () => _showSupportModal(context, isDark),
-                      ),
-                      _buildDivider(borderColor),
-                      _buildMenuTile(
-                        icon: CupertinoIcons.paperplane_fill,
-                        iconColor: const Color(0xFF0284C7),
-                        iconBg: const Color(0xFFF0F9FF),
-                        title: 'Shipping & Delivery FAQs',
-                        subtitle: 'Phnom Penh same-day & nationwide 1-2 days',
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        onTap: () => _showShippingInfoModal(context, isDark),
-                      ),
-                      _buildDivider(borderColor),
-                      _buildMenuTile(
-                        icon: CupertinoIcons.arrow_2_squarepath,
-                        iconColor: const Color(0xFFEC4899),
-                        iconBg: const Color(0xFFFDF2F8),
-                        title: '7-Day Return & Guarantee Policy',
-                        subtitle: '100% genuine baby essentials guarantee',
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        onTap: () => _showReturnPolicyModal(context, isDark),
-                      ),
-                      _buildDivider(borderColor),
-                      _buildMenuTile(
-                        icon: CupertinoIcons.shield_fill,
-                        iconColor: const Color(0xFF64748B),
-                        iconBg: const Color(0xFFF8FAFC),
-                        title: 'Privacy & Terms of Service',
-                        subtitle: 'Secure customer data and payment protection',
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        onTap: () => _showPrivacyModal(context, isDark),
-                      ),
-                    ],
-                  ),
-
                   const SizedBox(height: 24),
 
-                  // 8. Sign Out / Login CTA Button
+                  // 6. Sign Out / Login CTA Button
                   if (isAuthenticated)
                     _buildSignOutButton(context, isDark)
                   else
@@ -1685,199 +1534,6 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showLanguageModal(BuildContext context, bool isDark) {
-    final l10n = AppLocalizations.of(context);
-
-    showDialog(
-      context: context,
-      builder: (ctx) {
-        return BlocBuilder<LocaleCubit, Locale>(
-          builder: (dialogCtx, activeLocale) {
-            final isKhmer = activeLocale.languageCode == 'km';
-
-            return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
-                children: [
-                  const Icon(Icons.language_rounded, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Text(
-                    l10n?.languageAndCurrency ?? 'Language & Currency',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-                  ),
-                ],
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    l10n?.selectLanguage ?? 'Select Language',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  const SizedBox(height: 10),
-                  _buildLanguageOption(
-                    flag: '🇺🇸',
-                    label: 'English',
-                    isSelected: !isKhmer,
-                    isDark: isDark,
-                    onTap: () {
-                      context.read<LocaleCubit>().changeLocale(const Locale('en'));
-                    },
-                  ),
-                  _buildLanguageOption(
-                    flag: '🇰🇭',
-                    label: 'ភាសាខ្មែរ (Khmer)',
-                    isSelected: isKhmer,
-                    isDark: isDark,
-                    onTap: () {
-                      context.read<LocaleCubit>().changeLocale(const Locale('km'));
-                    },
-                  ),
-                  const Divider(height: 24),
-                  Text(
-                    isKhmer ? 'រូបិយប័ណ្ណ' : 'Currencies Supported',
-                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                  ),
-                  const SizedBox(height: 6),
-                  const Text('• USD (\$): Primary payment'),
-                  const SizedBox(height: 4),
-                  const Text('• KHR (៛): Cambodian Riel (4,100 ៛ / \$ via KHQR)'),
-                ],
-              ),
-              actions: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text(l10n?.close ?? 'Done'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildLanguageOption({
-    required String flag,
-    required String label,
-    required bool isSelected,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? AppColors.primary.withAlpha(25)
-              : (isDark ? AppColors.surfaceDark : const Color(0xFFF8FAFC)),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected
-                ? AppColors.primary
-                : (isDark ? Colors.white12 : Colors.grey.shade300),
-            width: isSelected ? 1.5 : 1.0,
-          ),
-        ),
-        child: Row(
-          children: [
-            Text(flag, style: const TextStyle(fontSize: 20)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : null,
-                ),
-              ),
-            ),
-            if (isSelected)
-              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20)
-            else
-              const Icon(Icons.circle_outlined, color: Colors.grey, size: 20),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showShippingInfoModal(BuildContext context, bool isDark) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Shipping & Delivery'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('🛵 Phnom Penh Express Delivery', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('Delivery within 2 - 4 hours or same-day schedule.', style: TextStyle(fontSize: 13)),
-            SizedBox(height: 12),
-            Text('🚚 Nationwide Provinces', style: TextStyle(fontWeight: FontWeight.bold)),
-            Text('Express bus / parcel delivery within 1 - 2 business days.', style: TextStyle(fontSize: 13)),
-          ],
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Got it'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showReturnPolicyModal(BuildContext context, bool isDark) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('7-Day Guarantee Policy'),
-        content: const Text(
-          'All items sold at Cherish Baby Store are 100% authentic. We accept returns or exchanges within 7 days of delivery for defective or unopened products in original packaging.',
-          style: TextStyle(fontSize: 13, height: 1.4),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Understood'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showPrivacyModal(BuildContext context, bool isDark) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Privacy & Security'),
-        content: const Text(
-          'Cherish Baby Store respects your privacy. Your personal information, delivery addresses, and payment details are encrypted and securely stored. We never sell your data.',
-          style: TextStyle(fontSize: 13, height: 1.4),
-        ),
-        actions: [
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }

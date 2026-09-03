@@ -135,6 +135,41 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _cachedUser ?? localDataSource?.getUser();
+    if (user == null) {
+      throw Exception('You must be logged in to change your password');
+    }
+
+    final token = user.token ?? '';
+    final email = user.email.trim();
+
+    // Verify current password if user has an email and is not pure Google token
+    if (email.isNotEmpty && !token.startsWith('google_')) {
+      try {
+        await remoteDataSource.login(email, currentPassword);
+      } catch (_) {
+        throw Exception('Current password is incorrect. Please try again.');
+      }
+    }
+
+    final updatedUser = await remoteDataSource.changePassword(
+      token: token,
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+
+    final tokenToKeep = (updatedUser.token != null && updatedUser.token!.isNotEmpty)
+        ? updatedUser.token
+        : token;
+    final merged = updatedUser.copyWith(token: tokenToKeep);
+    await saveUser(merged);
+  }
+
+  @override
   Future<void> saveUser(UserEntity user) async {
     _cachedUser = user;
     if (localDataSource != null) {
